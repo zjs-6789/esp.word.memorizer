@@ -226,7 +226,7 @@
             <button class="back-btn" id="backBtn">↩️ 返回上一个</button>
             <div class="feedback" id="feedback"></div>
             <div class="progress" id="progress"></div>
-            <div class="small-hint">✅ 正确后需再次按回车进入下一个<br>⏎ 空输入直接跳过当前<br>🔍 点击按钮或按 F2 显示答案</div>
+            <div class="small-hint">✅ 正确后需再次按回车进入下一个<br>⏎ 空输入直接跳过当前<br>🔍 点击按钮或按 F2 显示答案<br>🔙 点击按钮或按 Alt+← 返回上一个</div>
         </div>
 
         <div class="footer-note">
@@ -482,6 +482,13 @@
 
         // 处理键盘事件
         answerInput.addEventListener('keydown', (e) => {
+            // Alt + ← 返回上一个
+            if (e.altKey && e.key === 'ArrowLeft') {
+                e.preventDefault(); // 阻止浏览器默认后退行为
+                goBack();
+                return;
+            }
+
             if (e.key === 'F2') {
                 e.preventDefault();
                 showAnswer();
