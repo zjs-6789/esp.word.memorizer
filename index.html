@@ -154,7 +154,7 @@
             text-align: center;
             margin-bottom: 10px;
         }
-        .show-answer-btn {
+        .show-answer-btn, .back-btn {
             background: #f39c12;
             color: white;
             border: none;
@@ -167,13 +167,20 @@
             margin-top: 10px;
             width: 100%;
         }
+        .back-btn {
+            background: #2ecc71;
+            margin-top: 5px;
+        }
+        .back-btn:hover {
+            background: #27ae60;
+        }
         .show-answer-btn:hover {
             background: #e67e22;
         }
-        .show-answer-btn:active {
+        .show-answer-btn:active, .back-btn:active {
             transform: scale(0.98);
         }
-        .show-answer-btn:disabled {
+        .show-answer-btn:disabled, .back-btn:disabled {
             background: #bdc3c7;
             cursor: not-allowed;
         }
@@ -216,6 +223,7 @@
                 <input type="text" id="answerInput" placeholder="输入西班牙语后按回车" autocomplete="off">
             </div>
             <button class="show-answer-btn" id="showAnswerBtn">🔍 显示答案</button>
+            <button class="back-btn" id="backBtn">↩️ 返回上一个</button>
             <div class="feedback" id="feedback"></div>
             <div class="progress" id="progress"></div>
             <div class="small-hint">✅ 正确后需再次按回车进入下一个<br>⏎ 空输入直接跳过当前<br>🔍 点击按钮或按 F2 显示答案</div>
@@ -231,8 +239,8 @@
         let words = [];                 // 从 JSON 加载的原始单词数组
         let books = [];                 // 所有不重复的书本列表（如 "book1", "book2"）
         let currentWordList = [];       // 当前筛选出的单词池
-        let currentIndex = 0;           // 当前单词在 currentWordList 中的索引（顺序模式）
-        let remainingIndices = [];       // 随机模式下的剩余索引数组
+        let currentIndex = 0;           // 当前单词在 currentWordList 中的索引（顺序模式）或在 remainingIndices 中的索引（随机模式）
+        let remainingIndices = [];       // 随机模式下的剩余索引数组（随机顺序的单词索引）
         let isAnsweredCorrect = false;   // 当前单词是否已经答对
         let mode = 'order';              // 'order' 或 'random'
 
@@ -247,6 +255,7 @@
         const feedbackDiv = document.getElementById('feedback');
         const progressDiv = document.getElementById('progress');
         const showAnswerBtn = document.getElementById('showAnswerBtn');
+        const backBtn = document.getElementById('backBtn');
 
         // ---------- 辅助函数：从 unit 字段解析书本和单元 ----------
         function parseBookUnit(unitStr) {
@@ -373,6 +382,7 @@
             // 初始化索引
             if (mode === 'order') {
                 currentIndex = 0;
+                remainingIndices = []; // 随机模式下才使用
             } else {
                 // 随机模式：生成一个打乱的索引数组
                 remainingIndices = shuffleArray([...Array(currentWordList.length).keys()]);
@@ -384,6 +394,7 @@
             quizArea.style.display = 'block';
             answerInput.disabled = false;
             showAnswerBtn.disabled = false;
+            backBtn.disabled = false; // 启用返回按钮
             answerInput.focus();
             feedbackDiv.textContent = '';
             showCurrentWord();
@@ -415,6 +426,7 @@
                     chineseDisplay.textContent = '🎉 恭喜！所有单词默写完毕！';
                     answerInput.disabled = true;
                     showAnswerBtn.disabled = true;
+                    backBtn.disabled = true; // 禁用返回按钮
                     progressDiv.textContent = `已完成 ${currentWordList.length} 个单词`;
                 }
             } else {
@@ -426,11 +438,28 @@
                     chineseDisplay.textContent = '🎉 恭喜！所有单词默写完毕！';
                     answerInput.disabled = true;
                     showAnswerBtn.disabled = true;
+                    backBtn.disabled = true;
                     progressDiv.textContent = `已完成 ${remainingIndices.length} 个单词`;
                 }
             }
             answerInput.value = '';
             feedbackDiv.textContent = '';
+        }
+
+        // 返回上一个单词
+        function goBack() {
+            // 如果已经完成或没有单词，或已经在第一个单词，则无法返回
+            if (currentWordList.length === 0 || answerInput.disabled) return;
+            if (currentIndex <= 0) {
+                alert('已经是第一个单词了');
+                return;
+            }
+            currentIndex--;
+            isAnsweredCorrect = false; // 重置为未答对
+            answerInput.value = '';
+            feedbackDiv.textContent = '';
+            showCurrentWord();
+            answerInput.focus();
         }
 
         // 显示答案的函数
@@ -449,6 +478,7 @@
         }
 
         showAnswerBtn.addEventListener('click', showAnswer);
+        backBtn.addEventListener('click', goBack);
 
         // 处理键盘事件
         answerInput.addEventListener('keydown', (e) => {
