@@ -188,7 +188,7 @@
         <div class="quiz-area" id="quizArea" style="display: none;">
             <div class="chinese" id="chineseDisplay"></div>
             <div class="input-group">
-                <input type="text" id="answerInput" placeholder="输入英文后按回车" autocomplete="off">
+                <input type="text" id="answerInput" placeholder="输入西班牙语后按回车" autocomplete="off">
             </div>
             <div class="feedback" id="feedback"></div>
             <div class="progress" id="progress"></div>
@@ -308,7 +308,7 @@
                 wordObj = currentWordList[realIndex];
                 progressDiv.textContent = `第 ${currentIndex+1} / ${remainingIndices.length}`;
             }
-            chineseDisplay.textContent = wordObj.zh;
+            chineseDisplay.textContent = wordObj.meaning;  // 修改：原为 wordObj.zh
         }
 
         // 进入下一个单词
@@ -367,8 +367,8 @@
                     wordObj = currentWordList[realIndex];
                 }
 
-                // 比对答案（忽略大小写）
-                if (userAnswer.toLowerCase() === wordObj.en.toLowerCase()) {
+                // 比对答案（忽略大小写）  修改：原为 wordObj.en，现改为 wordObj.es
+                if (userAnswer.toLowerCase() === wordObj.es.toLowerCase()) {
                     feedbackDiv.textContent = '✅ 正确！';
                     feedbackDiv.style.color = 'green';
                     isAnsweredCorrect = true;
