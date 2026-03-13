@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单词默写器</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 24px;
+            font-weight: 500;
+            font-size: 28px;
+        }
+        .selector {
+            margin-bottom: 20px;
+        }
+        .selector label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #34495e;
+        }
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            font-size: 16px;
+            background: white;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        select:focus {
+            border-color: #3498db;
+        }
+        .mode {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        .mode label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            color: #2c3e50;
+        }
+        .mode input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 40px;
+            font-size: 18px;
+            font-weight: 500;
+            width: 100%;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            margin-bottom: 20px;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .quiz-area {
+            background: #f8fafc;
+            border-radius: 24px;
+            padding: 24px;
+            margin-top: 10px;
+        }
+        .chinese {
+            font-size: 36px;
+            font-weight: 600;
+            text-align: center;
+            color: #2c3e50;
+            margin: 20px 0;
+            min-height: 70px;
+        }
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .input-group input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 30px;
+            font-size: 18px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus {
+            border-color: #3498db;
+        }
+        .feedback {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 500;
+            min-height: 30px;
+            margin: 10px 0;
+        }
+        .progress {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 16px;
+            margin-top: 16px;
+        }
+        .footer-note {
+            text-align: center;
+            color: #95a5a6;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+        .small-hint {
+            color: #7f8c8d;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 单词默写器</h1>
+
+        <!-- 选择区域 -->
+        <div class="selector">
+            <label>选择单元（按住 Ctrl 多选）</label>
+            <select id="unitSelect" multiple size="4">
+                <!-- 选项会在加载数据后动态生成，也可以先写死几个用于测试 -->
+                <option value="unit1">第一单元</option>
+                <option value="unit2">第二单元</option>
+                <option value="unit3">第三单元</option>
+                <option value="unit4">第四单元</option>
+            </select>
+        </div>
+
+        <!-- 模式切换 -->
+        <div class="mode">
+            <label>
+                <input type="radio" name="mode" value="order" checked> 顺序
+            </label>
+            <label>
+                <input type="radio" name="mode" value="random"> 随机
+            </label>
+        </div>
+
+        <!-- 开始按钮 -->
+        <button class="btn" id="startBtn" disabled>加载单词中...</button>
+
+        <!-- 默写区域（初始隐藏） -->
+        <div class="quiz-area" id="quizArea" style="display: none;">
+            <div class="chinese" id="chineseDisplay"></div>
+            <div class="input-group">
+                <input type="text" id="answerInput" placeholder="输入英文后按回车" autocomplete="off">
+            </div>
+            <div class="feedback" id="feedback"></div>
+            <div class="progress" id="progress"></div>
+            <div class="small-hint">✅ 正确后需再次按回车进入下一个<br>⏎ 空输入直接跳过当前</div>
+        </div>
+
+        <div class="footer-note">
+            ⚡ 数据来自外部 words.json
+        </div>
+    </div>
+
+    <script>
+        // ---------- 全局变量 ----------
+        let words = [];                 // 从 JSON 加载的原始单词数组
+        let currentWordList = [];       // 当前筛选出的单词池
+        let currentIndex = 0;           // 当前单词在 currentWordList 中的索引（顺序模式）
+        let remainingIndices = [];       // 随机模式下的剩余索引数组
+        let isAnsweredCorrect = false;   // 当前单词是否已经答对
+        let mode = 'order';              // 'order' 或 'random'
+
+        // 获取 DOM 元素
+        const unitSelect = document.getElementById('unitSelect');
+        const modeRadios = document.getElementsByName('mode');
+        const startBtn = document.getElementById('startBtn');
+        const quizArea = document.getElementById('quizArea');
+        const chineseDisplay = document.getElementById('chineseDisplay');
+        const answerInput = document.getElementById('answerInput');
+        const feedbackDiv = document.getElementById('feedback');
+        const progressDiv = document.getElementById('progress');
+
+        // ---------- 加载外部 JSON 单词数据 ----------
+        async function loadWords() {
+            try {
+                const response = await fetch('words.json');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                words = await response.json();
+                console.log(`加载了 ${words.length} 个单词`);
+
+                // 动态生成单元选项（从数据中提取所有不重复的 unit）
+                const units = [...new Set(words.map(w => w.unit))];
+                // 清空并重新填充 select
+                unitSelect.innerHTML = '';
+                units.forEach(unit => {
+                    const option = document.createElement('option');
+                    option.value = unit;
+                    option.textContent = unit;  // 可以自定义显示名称，比如 "第一单元"
+                    unitSelect.appendChild(option);
+                });
+
+                // 启用开始按钮
+                startBtn.disabled = false;
+                startBtn.textContent = '开始默写';
+            } catch (error) {
+                console.error('加载单词失败：', error);
+                startBtn.textContent = '加载失败，刷新重试';
+                startBtn.disabled = true;
+            }
+        }
+
+        // 开始加载
+        loadWords();
+
+        // ---------- 监听模式变化 ----------
+        modeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                mode = e.target.value;
+            });
+        });
+
+        // ---------- 开始按钮点击 ----------
+        startBtn.addEventListener('click', () => {
+            if (words.length === 0) {
+                alert('单词数据尚未加载，请稍后');
+                return;
+            }
+
+            // 获取选中的单元
+            const selectedOptions = Array.from(unitSelect.selectedOptions);
+            if (selectedOptions.length === 0) {
+                alert('请至少选择一个单元');
+                return;
+            }
+            const selectedUnits = selectedOptions.map(opt => opt.value);
+
+            // 根据选中单元过滤单词
+            currentWordList = words.filter(w => selectedUnits.includes(w.unit));
+            if (currentWordList.length === 0) {
+                alert('所选单元没有单词');
+                return;
+            }
+
+            // 初始化索引
+            if (mode === 'order') {
+                currentIndex = 0;
+            } else {
+                // 随机模式：生成一个打乱的索引数组
+                remainingIndices = shuffleArray([...Array(currentWordList.length).keys()]);
+                currentIndex = 0; // 这个 currentIndex 是 remainingIndices 的索引
+            }
+            isAnsweredCorrect = false;
+
+            // 显示默写区域
+            quizArea.style.display = 'block';
+            answerInput.focus();
+            feedbackDiv.textContent = '';
+            showCurrentWord();
+        });
+
+        // 显示当前单词的中文
+        function showCurrentWord() {
+            let wordObj;
+            if (mode === 'order') {
+                wordObj = currentWordList[currentIndex];
+                progressDiv.textContent = `第 ${currentIndex+1} / ${currentWordList.length}`;
+            } else {
+                const realIndex = remainingIndices[currentIndex];
+                wordObj = currentWordList[realIndex];
+                progressDiv.textContent = `第 ${currentIndex+1} / ${remainingIndices.length}`;
+            }
+            chineseDisplay.textContent = wordObj.zh;
+        }
+
+        // 进入下一个单词
+        function moveToNextWord() {
+            if (mode === 'order') {
+                if (currentIndex < currentWordList.length - 1) {
+                    currentIndex++;
+                    isAnsweredCorrect = false;
+                    showCurrentWord();
+                } else {
+                    // 全部完成
+                    chineseDisplay.textContent = '🎉 恭喜！所有单词默写完毕！';
+                    answerInput.disabled = true;
+                    progressDiv.textContent = `已完成 ${currentWordList.length} 个单词`;
+                }
+            } else {
+                if (currentIndex < remainingIndices.length - 1) {
+                    currentIndex++;
+                    isAnsweredCorrect = false;
+                    showCurrentWord();
+                } else {
+                    chineseDisplay.textContent = '🎉 恭喜！所有单词默写完毕！';
+                    answerInput.disabled = true;
+                    progressDiv.textContent = `已完成 ${remainingIndices.length} 个单词`;
+                }
+            }
+            answerInput.value = '';
+            feedbackDiv.textContent = '';
+        }
+
+        // 处理回车键
+        answerInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+
+                // 如果当前单词已经答对，则直接进入下一个（无论输入框内容）
+                if (isAnsweredCorrect) {
+                    moveToNextWord();
+                    return;
+                }
+
+                const userAnswer = answerInput.value.trim();
+
+                // 空输入：直接下一个
+                if (userAnswer === '') {
+                    moveToNextWord();
+                    return;
+                }
+
+                // 获取当前单词对象
+                let wordObj;
+                if (mode === 'order') {
+                    wordObj = currentWordList[currentIndex];
+                } else {
+                    const realIndex = remainingIndices[currentIndex];
+                    wordObj = currentWordList[realIndex];
+                }
+
+                // 比对答案（忽略大小写）
+                if (userAnswer.toLowerCase() === wordObj.en.toLowerCase()) {
+                    feedbackDiv.textContent = '✅ 正确！';
+                    feedbackDiv.style.color = 'green';
+                    isAnsweredCorrect = true;
+                    // 注意：不清空输入框，等待用户再次回车进入下一个
+                } else {
+                    feedbackDiv.textContent = '❌ 错误，再试试';
+                    feedbackDiv.style.color = 'red';
+                    // 不清空输入框，让用户继续尝试
+                }
+            }
+        });
+
+        // 辅助：打乱数组
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+    </script>
+</body>
+</html>
