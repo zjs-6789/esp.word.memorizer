@@ -153,6 +153,29 @@
             text-align: center;
             margin-bottom: 10px;
         }
+        .show-answer-btn {
+            background: #f39c12;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .show-answer-btn:hover {
+            background: #e67e22;
+        }
+        .show-answer-btn:active {
+            transform: scale(0.98);
+        }
+        .show-answer-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -163,7 +186,7 @@
         <div class="selector">
             <label>选择单元（按住 Ctrl 多选）</label>
             <select id="unitSelect" multiple size="4">
-                <!-- 选项会在加载数据后动态生成，也可以先写死几个用于测试 -->
+                <!-- 选项会在加载数据后动态生成 -->
                 <option value="unit1">第一单元</option>
                 <option value="unit2">第二单元</option>
                 <option value="unit3">第三单元</option>
@@ -190,9 +213,10 @@
             <div class="input-group">
                 <input type="text" id="answerInput" placeholder="输入西班牙语后按回车" autocomplete="off">
             </div>
+            <button class="show-answer-btn" id="showAnswerBtn">🔍 显示答案</button>
             <div class="feedback" id="feedback"></div>
             <div class="progress" id="progress"></div>
-            <div class="small-hint">✅ 正确后需再次按回车进入下一个<br>⏎ 空输入直接跳过当前<br>🔍 按 F2 显示答案</div>
+            <div class="small-hint">✅ 正确后需再次按回车进入下一个<br>⏎ 空输入直接跳过当前<br>🔍 点击按钮或按 F2 显示答案</div>
         </div>
 
         <div class="footer-note">
@@ -218,6 +242,7 @@
         const answerInput = document.getElementById('answerInput');
         const feedbackDiv = document.getElementById('feedback');
         const progressDiv = document.getElementById('progress');
+        const showAnswerBtn = document.getElementById('showAnswerBtn');
 
         // ---------- 加载外部 JSON 单词数据 ----------
         async function loadWords() {
@@ -292,6 +317,7 @@
 
             // 显示默写区域
             quizArea.style.display = 'block';
+            answerInput.disabled = false;
             answerInput.focus();
             feedbackDiv.textContent = '';
             showCurrentWord();
@@ -322,6 +348,7 @@
                     // 全部完成
                     chineseDisplay.textContent = '🎉 恭喜！所有单词默写完毕！';
                     answerInput.disabled = true;
+                    showAnswerBtn.disabled = true;
                     progressDiv.textContent = `已完成 ${currentWordList.length} 个单词`;
                 }
             } else {
@@ -332,6 +359,7 @@
                 } else {
                     chineseDisplay.textContent = '🎉 恭喜！所有单词默写完毕！';
                     answerInput.disabled = true;
+                    showAnswerBtn.disabled = true;
                     progressDiv.textContent = `已完成 ${remainingIndices.length} 个单词`;
                 }
             }
@@ -339,23 +367,32 @@
             feedbackDiv.textContent = '';
         }
 
-        // 处理键盘事件（回车和 F2）
+        // 显示答案的函数（供按钮和F2调用）
+        function showAnswer() {
+            if (currentWordList.length === 0 || answerInput.disabled) return; // 没开始或已结束就不显示
+            let wordObj;
+            if (mode === 'order') {
+                wordObj = currentWordList[currentIndex];
+            } else {
+                const realIndex = remainingIndices[currentIndex];
+                wordObj = currentWordList[realIndex];
+            }
+            feedbackDiv.textContent = `🔍 答案：${wordObj.es}`;
+            feedbackDiv.style.color = 'blue';
+            // 保持输入框焦点
+            answerInput.focus();
+        }
+
+        // 显示答案按钮点击事件
+        showAnswerBtn.addEventListener('click', showAnswer);
+
+        // 处理键盘事件（回车和F2）
         answerInput.addEventListener('keydown', (e) => {
-            // 新增：按 F2 显示当前单词的正确答案
+            // 按 F2 显示答案
             if (e.key === 'F2') {
-                e.preventDefault(); // 防止可能的浏览器默认行为
-                if (currentWordList.length > 0) {
-                    let wordObj;
-                    if (mode === 'order') {
-                        wordObj = currentWordList[currentIndex];
-                    } else {
-                        const realIndex = remainingIndices[currentIndex];
-                        wordObj = currentWordList[realIndex];
-                    }
-                    feedbackDiv.textContent = `🔍 答案：${wordObj.es}`;
-                    feedbackDiv.style.color = 'blue';
-                }
-                return; // 不再执行后续的 Enter 逻辑
+                e.preventDefault();
+                showAnswer();
+                return;
             }
 
             if (e.key === 'Enter') {
