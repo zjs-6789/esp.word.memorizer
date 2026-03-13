@@ -43,7 +43,7 @@
             font-weight: 500;
             color: #34495e;
         }
-        select {
+        select, .book-select {
             width: 100%;
             padding: 12px;
             border: 2px solid #e0e0e0;
@@ -52,6 +52,7 @@
             background: white;
             outline: none;
             transition: border-color 0.2s;
+            margin-bottom: 15px;
         }
         select:focus {
             border-color: #3498db;
@@ -182,15 +183,16 @@
     <div class="container">
         <h1>📚 基西默写器</h1>
 
-        <!-- 选择区域 -->
+        <!-- 选择区域：先选书，再选单元 -->
         <div class="selector">
-            <label>选择单元（按住 Ctrl 多选）</label>
+            <label for="bookSelect">选择书本</label>
+            <select id="bookSelect" class="book-select">
+                <option value="">-- 请先选择书本 --</option>
+            </select>
+
+            <label for="unitSelect">选择单元（按住 Ctrl 多选）</label>
             <select id="unitSelect" multiple size="4">
-                <!-- 选项会在加载数据后动态生成 -->
-                <option value="unit1">第一单元</option>
-                <option value="unit2">第二单元</option>
-                <option value="unit3">第三单元</option>
-                <option value="unit4">第四单元</option>
+                <!-- 选项会根据所选书本动态生成 -->
             </select>
         </div>
 
@@ -220,13 +222,14 @@
         </div>
 
         <div class="footer-note">
-            ⚡ 来自zju.zjs
+            ⚡ 数据来自外部 words.json
         </div>
     </div>
 
     <script>
         // ---------- 全局变量 ----------
         let words = [];                 // 从 JSON 加载的原始单词数组
+        let books = [];                 // 所有不重复的书本列表（如 "book1", "book2"）
         let currentWordList = [];       // 当前筛选出的单词池
         let currentIndex = 0;           // 当前单词在 currentWordList 中的索引（顺序模式）
         let remainingIndices = [];       // 随机模式下的剩余索引数组
@@ -234,6 +237,7 @@
         let mode = 'order';              // 'order' 或 'random'
 
         // 获取 DOM 元素
+        const bookSelect = document.getElementById('bookSelect');
         const unitSelect = document.getElementById('unitSelect');
         const modeRadios = document.getElementsByName('mode');
         const startBtn = document.getElementById('startBtn');
@@ -244,6 +248,18 @@
         const progressDiv = document.getElementById('progress');
         const showAnswerBtn = document.getElementById('showAnswerBtn');
 
+        // ---------- 辅助函数：从 unit 字段解析书本和单元 ----------
+        function parseBookUnit(unitStr) {
+            // 假设格式为 "bookX-unitY" 或类似，例如 "book1-unit1"
+            const parts = unitStr.split('-');
+            if (parts.length >= 2) {
+                return { book: parts[0], unit: parts[1] };
+            } else {
+                // 兼容旧数据：如果没有连字符，整个作为 unit，book 设为 "unknown"
+                return { book: 'unknown', unit: unitStr };
+            }
+        }
+
         // ---------- 加载外部 JSON 单词数据 ----------
         async function loadWords() {
             try {
@@ -252,18 +268,33 @@
                 words = await response.json();
                 console.log(`加载了 ${words.length} 个单词`);
 
-                // 动态生成单元选项（从数据中提取所有不重复的 unit）
-                const units = [...new Set(words.map(w => w.unit))];
-                // 清空并重新填充 select
-                unitSelect.innerHTML = '';
-                units.forEach(unit => {
+                // 提取所有不重复的书本
+                const bookSet = new Set();
+                words.forEach(w => {
+                    const { book } = parseBookUnit(w.unit);
+                    bookSet.add(book);
+                });
+                books = Array.from(bookSet).sort();
+
+                // 填充书本下拉框
+                bookSelect.innerHTML = '<option value="">-- 请选择书本 --</option>';
+                books.forEach(book => {
                     const option = document.createElement('option');
-                    option.value = unit;
-                    option.textContent = unit;  // 可以自定义显示名称，比如 "第一单元"
-                    unitSelect.appendChild(option);
+                    option.value = book;
+                    // 可以美化显示，比如将 "book1" 显示为 "第一册"
+                    let displayName = book;
+                    if (book.startsWith('book')) {
+                        const num = book.replace('book', '');
+                        displayName = `第 ${num} 册`;
+                    }
+                    option.textContent = displayName;
+                    bookSelect.appendChild(option);
                 });
 
-                // 启用开始按钮
+                // 书本选择变化时，更新单元列表
+                bookSelect.addEventListener('change', updateUnitOptions);
+
+                // 启用开始按钮（但需要用户先选书）
                 startBtn.disabled = false;
                 startBtn.textContent = '开始默写';
             } catch (error) {
@@ -271,6 +302,40 @@
                 startBtn.textContent = '加载失败，刷新重试';
                 startBtn.disabled = true;
             }
+        }
+
+        // 根据所选书本更新单元多选框
+        function updateUnitOptions() {
+            const selectedBook = bookSelect.value;
+            if (!selectedBook) {
+                unitSelect.innerHTML = '<option value="">-- 请先选择书本 --</option>';
+                return;
+            }
+
+            // 从所有单词中过滤出属于该书本的单词，提取不重复的单元
+            const unitSet = new Set();
+            words.forEach(w => {
+                const { book, unit } = parseBookUnit(w.unit);
+                if (book === selectedBook) {
+                    unitSet.add(unit);
+                }
+            });
+            const units = Array.from(unitSet).sort();
+
+            // 填充单元多选框
+            unitSelect.innerHTML = '';
+            units.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = `${selectedBook}-${unit}`; // 存储完整标识，方便过滤
+                // 美化显示
+                let displayUnit = unit;
+                if (unit.startsWith('unit')) {
+                    const num = unit.replace('unit', '');
+                    displayUnit = `第 ${num} 单元`;
+                }
+                option.textContent = displayUnit;
+                unitSelect.appendChild(option);
+            });
         }
 
         // 开始加载
@@ -290,16 +355,16 @@
                 return;
             }
 
-            // 获取选中的单元
+            // 获取选中的单元（值是完整标识如 "book1-unit1"）
             const selectedOptions = Array.from(unitSelect.selectedOptions);
             if (selectedOptions.length === 0) {
                 alert('请至少选择一个单元');
                 return;
             }
-            const selectedUnits = selectedOptions.map(opt => opt.value);
+            const selectedUnitIds = selectedOptions.map(opt => opt.value);
 
-            // 根据选中单元过滤单词
-            currentWordList = words.filter(w => selectedUnits.includes(w.unit));
+            // 根据选中的单元标识过滤单词
+            currentWordList = words.filter(w => selectedUnitIds.includes(w.unit));
             if (currentWordList.length === 0) {
                 alert('所选单元没有单词');
                 return;
@@ -311,13 +376,14 @@
             } else {
                 // 随机模式：生成一个打乱的索引数组
                 remainingIndices = shuffleArray([...Array(currentWordList.length).keys()]);
-                currentIndex = 0; // 这个 currentIndex 是 remainingIndices 的索引
+                currentIndex = 0;
             }
             isAnsweredCorrect = false;
 
             // 显示默写区域
             quizArea.style.display = 'block';
             answerInput.disabled = false;
+            showAnswerBtn.disabled = false;
             answerInput.focus();
             feedbackDiv.textContent = '';
             showCurrentWord();
@@ -367,9 +433,9 @@
             feedbackDiv.textContent = '';
         }
 
-        // 显示答案的函数（供按钮和F2调用）
+        // 显示答案的函数
         function showAnswer() {
-            if (currentWordList.length === 0 || answerInput.disabled) return; // 没开始或已结束就不显示
+            if (currentWordList.length === 0 || answerInput.disabled) return;
             let wordObj;
             if (mode === 'order') {
                 wordObj = currentWordList[currentIndex];
@@ -379,16 +445,13 @@
             }
             feedbackDiv.textContent = `🔍 答案：${wordObj.es}`;
             feedbackDiv.style.color = 'blue';
-            // 保持输入框焦点
             answerInput.focus();
         }
 
-        // 显示答案按钮点击事件
         showAnswerBtn.addEventListener('click', showAnswer);
 
-        // 处理键盘事件（回车和F2）
+        // 处理键盘事件
         answerInput.addEventListener('keydown', (e) => {
-            // 按 F2 显示答案
             if (e.key === 'F2') {
                 e.preventDefault();
                 showAnswer();
@@ -398,7 +461,6 @@
             if (e.key === 'Enter') {
                 e.preventDefault();
 
-                // 如果当前单词已经答对，则直接进入下一个（无论输入框内容）
                 if (isAnsweredCorrect) {
                     moveToNextWord();
                     return;
@@ -406,13 +468,11 @@
 
                 const userAnswer = answerInput.value.trim();
 
-                // 空输入：直接下一个
                 if (userAnswer === '') {
                     moveToNextWord();
                     return;
                 }
 
-                // 获取当前单词对象
                 let wordObj;
                 if (mode === 'order') {
                     wordObj = currentWordList[currentIndex];
@@ -421,16 +481,13 @@
                     wordObj = currentWordList[realIndex];
                 }
 
-                // 比对答案（忽略大小写）
                 if (userAnswer.toLowerCase() === wordObj.es.toLowerCase()) {
                     feedbackDiv.textContent = '✅ 正确！';
                     feedbackDiv.style.color = 'green';
                     isAnsweredCorrect = true;
-                    // 注意：不清空输入框，等待用户再次回车进入下一个
                 } else {
                     feedbackDiv.textContent = '❌ 错误，再试试';
                     feedbackDiv.style.color = 'red';
-                    // 不清空输入框，让用户继续尝试
                 }
             }
         });
