@@ -192,7 +192,7 @@
             </div>
             <div class="feedback" id="feedback"></div>
             <div class="progress" id="progress"></div>
-            <div class="small-hint">✅ 正确后需再次按回车进入下一个<br>⏎ 空输入直接跳过当前</div>
+            <div class="small-hint">✅ 正确后需再次按回车进入下一个<br>⏎ 空输入直接跳过当前<br>🔍 按 F2 显示答案</div>
         </div>
 
         <div class="footer-note">
@@ -308,7 +308,7 @@
                 wordObj = currentWordList[realIndex];
                 progressDiv.textContent = `第 ${currentIndex+1} / ${remainingIndices.length}`;
             }
-            chineseDisplay.textContent = wordObj.meaning;  // 修改：原为 wordObj.zh
+            chineseDisplay.textContent = wordObj.meaning;
         }
 
         // 进入下一个单词
@@ -339,8 +339,25 @@
             feedbackDiv.textContent = '';
         }
 
-        // 处理回车键
+        // 处理键盘事件（回车和 F2）
         answerInput.addEventListener('keydown', (e) => {
+            // 新增：按 F2 显示当前单词的正确答案
+            if (e.key === 'F2') {
+                e.preventDefault(); // 防止可能的浏览器默认行为
+                if (currentWordList.length > 0) {
+                    let wordObj;
+                    if (mode === 'order') {
+                        wordObj = currentWordList[currentIndex];
+                    } else {
+                        const realIndex = remainingIndices[currentIndex];
+                        wordObj = currentWordList[realIndex];
+                    }
+                    feedbackDiv.textContent = `🔍 答案：${wordObj.es}`;
+                    feedbackDiv.style.color = 'blue';
+                }
+                return; // 不再执行后续的 Enter 逻辑
+            }
+
             if (e.key === 'Enter') {
                 e.preventDefault();
 
@@ -367,7 +384,7 @@
                     wordObj = currentWordList[realIndex];
                 }
 
-                // 比对答案（忽略大小写）  修改：原为 wordObj.en，现改为 wordObj.es
+                // 比对答案（忽略大小写）
                 if (userAnswer.toLowerCase() === wordObj.es.toLowerCase()) {
                     feedbackDiv.textContent = '✅ 正确！';
                     feedbackDiv.style.color = 'green';
