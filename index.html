@@ -226,7 +226,12 @@
             <button class="back-btn" id="backBtn">↩️ 返回上一个</button>
             <div class="feedback" id="feedback"></div>
             <div class="progress" id="progress"></div>
-            <div class="small-hint">✅ 正确后需再次按回车进入下一个<br>⏎ 空输入直接跳过当前<br>🔍 点击按钮或按 F2 显示答案<br>🔙 点击按钮或按 Alt+← 返回上一个</div>
+            <div class="small-hint">
+                ✅ 正确后需再次按回车进入下一个<br>
+                ⏎ 空输入直接跳过当前<br>
+                🔍 点击按钮或按 F2 显示答案<br>
+                🔙 点击按钮或按 Alt+← 返回上一个
+            </div>
         </div>
 
         <div class="footer-note">
@@ -267,6 +272,16 @@
                 // 兼容旧数据：如果没有连字符，整个作为 unit，book 设为 "unknown"
                 return { book: 'unknown', unit: unitStr };
             }
+        }
+
+        // ---------- 辅助函数：提取单词的阳性原形（逗号前的内容） ----------
+        function getBaseForm(wordWithGender) {
+            // 如果包含逗号，取逗号前部分；否则返回原词
+            const commaIndex = wordWithGender.indexOf(',');
+            if (commaIndex > -1) {
+                return wordWithGender.substring(0, commaIndex).trim();
+            }
+            return wordWithGender.trim();
         }
 
         // ---------- 加载外部 JSON 单词数据 ----------
@@ -518,7 +533,9 @@
                     wordObj = currentWordList[realIndex];
                 }
 
-                if (userAnswer.toLowerCase() === wordObj.es.toLowerCase()) {
+                // 提取单词的阳性原形进行比对
+                const baseForm = getBaseForm(wordObj.es);
+                if (userAnswer.toLowerCase() === baseForm.toLowerCase()) {
                     feedbackDiv.textContent = '✅ 正确！';
                     feedbackDiv.style.color = 'green';
                     isAnsweredCorrect = true;
